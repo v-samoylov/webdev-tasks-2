@@ -2,23 +2,41 @@ var MongoClient = require('mongodb').MongoClient;
 
 function sendMongoRequest(request, callback) {
     MongoClient.connect(request.url, function (err, db) {
+        var onResponseCallback = (err, data) => {
+            callback(err, data);
+            db.close();
+        };
         var collection = db.collection(request.collectionName);
-        var response = collection[request.method](
-            request.filter,
-            request.operations,
-            request.options,
-            function (err, data) {
-                if (data.readable) {
-                    data.toArray(function (err, result) {
-                        callback(err, result);
-                        db.close();
-                    });
-                } else {
-                    callback(err, data);
-                    db.close();
-                }
-            }
-        );
+        switch (request.method) {
+            case 'insert':
+                var response = collection.insert(
+                    request.document,
+                    request.options,
+                    onResponseCallback
+                );
+                break;
+            case 'find':
+                var response = collection.find(
+                    request.filter,
+                    request.projection
+                );
+                response.toArray(onResponseCallback);
+                break;
+            case 'remove':
+                var response = collection.remove(
+                    request.filter,
+                    onResponseCallback
+                );
+                break;
+            case 'updateMany':
+                var response = collection.update(
+                    request.filter,
+                    request.operations,
+                    request.options,
+                    onResponseCallback
+                );
+                break;
+        }
     });
 }
 
@@ -29,6 +47,8 @@ var MongoRequest = function (url) {
     this.filter = {};
     this.operations = {};
     this.options = {};
+    this.document = null;
+    this.projection = {};
     this.collection = (collectionName) => {
         this.collectionName = collectionName;
         return this;
@@ -56,7 +76,7 @@ var MongoRequest = function (url) {
         this.include = (valueArray) => {
             isNegated ?
                 this.filter[propName] = {$nin: valueArray} :
-                this.filter[propName] = {$all: valueArray};
+                this.filter[propName] = {$in: valueArray};
             return this;
         };
         this.not = () => {
@@ -82,6 +102,11 @@ var MongoRequest = function (url) {
             return sendMongoRequest(this, callback);
         };
         return this;
+    };
+    this.insert = (doc, callback) => {
+        this.document = doc;
+        this.method = 'insert';
+        return sendMongoRequest(this, callback);
     };
 };
 
