@@ -41,42 +41,41 @@ function sendMongoRequest(request, callback) {
 }
 
 var MongoRequest = function (url) {
-    this.url = url;
-    this.collectionName = null;
-    this.method = null;
-    this.filter = {};
-    this.operations = {};
-    this.options = {};
-    this.document = null;
-    this.projection = {};
+    var _collectionName = null;
+    var method = null;
+    var filter = {};
+    var operations = {};
+    var options = {};
+    var document = null;
+    var projection = {};
     this.collection = (collectionName) => {
-        this.collectionName = collectionName;
+        _collectionName = collectionName;
         return this;
     };
     this.where = (propName) => {
         var isNegated = false;
         this.equal = (value) => {
             isNegated ?
-                this.filter[propName] = {$ne: value} :
-                this.filter[propName] = value;
+                filter[propName] = {$ne: value} :
+                filter[propName] = value;
             return this;
         };
         this.lessThan = (value) => {
             isNegated ?
-                this.filter[propName] = {$gte: value} :
-                this.filter[propName] = {$lt: value};
+                filter[propName] = {$gte: value} :
+                filter[propName] = {$lt: value};
             return this;
         };
         this.greatThan = (value) => {
             isNegated ?
-                this.filter[propName] = {$lte: value} :
-                this.filter[propName] = {$gt: value};
+                filter[propName] = {$lte: value} :
+                filter[propName] = {$gt: value};
             return this;
         };
         this.include = (valueArray) => {
             isNegated ?
-                this.filter[propName] = {$nin: valueArray} :
-                this.filter[propName] = {$in: valueArray};
+                filter[propName] = {$nin: valueArray} :
+                filter[propName] = {$in: valueArray};
             return this;
         };
         this.not = () => {
@@ -86,27 +85,51 @@ var MongoRequest = function (url) {
         return this;
     };
     this.find = (callback) => {
-        this.method = 'find';
-        return sendMongoRequest(this, callback);
+        method = 'find';
+        return sendMongoRequest({
+            url,
+            method,
+            collectionName: _collectionName,
+            filter,
+            projection
+        }, callback);
     };
     this.remove = (callback) => {
-        this.method = 'remove';
-        return sendMongoRequest(this, callback);
+        method = 'remove';
+        return sendMongoRequest({
+            url,
+            method,
+            collectionName: _collectionName,
+            filter
+        }, callback);
     };
     this.set = (propName, propValue) => {
-        this.operations['$set'] = {};
-        this.operations['$set'][propName] = propValue;
+        operations['$set'] = {};
+        operations['$set'][propName] = propValue;
         this.update = (callback) => {
-            this.method = 'updateMany';
-            this.options.multi = true;
-            return sendMongoRequest(this, callback);
+            method = 'updateMany';
+            options.multi = true;
+            return sendMongoRequest({
+                url,
+                method,
+                collectionName: _collectionName,
+                filter,
+                operations,
+                options
+            }, callback);
         };
         return this;
     };
     this.insert = (doc, callback) => {
-        this.document = doc;
-        this.method = 'insert';
-        return sendMongoRequest(this, callback);
+        document = doc;
+        method = 'insert';
+        return sendMongoRequest({
+            url,
+            method,
+            collectionName: _collectionName,
+            document,
+            options
+        }, callback);
     };
 };
 
