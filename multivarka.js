@@ -2,11 +2,14 @@ var MongoClient = require('mongodb').MongoClient;
 
 function sendMongoRequest(request, callback) {
     MongoClient.connect(request.url, function (err, db) {
+        if (err) {
+            return callback(err);;
+        }
         var onResponseCallback = (err, data) => {
             callback(err, data);
             db.close();
         };
-        var collection = db.collection(request.collectionName);
+        var collection = db.collection(request.collection);
         switch (request.method) {
             case 'insert':
                 var response = collection.insert(
@@ -48,6 +51,12 @@ var MongoRequest = function (url) {
     var options = {};
     var document = null;
     var projection = {};
+    function send(request, callback) {
+        request.url = url;
+        request.method = method;
+        request.collection = _collectionName;
+        sendMongoRequest(request, callback);
+    };
     this.collection = (collectionName) => {
         _collectionName = collectionName;
         return this;
@@ -86,20 +95,14 @@ var MongoRequest = function (url) {
     };
     this.find = (callback) => {
         method = 'find';
-        return sendMongoRequest({
-            url,
-            method,
-            collectionName: _collectionName,
+        return send({
             filter,
             projection
         }, callback);
     };
     this.remove = (callback) => {
         method = 'remove';
-        return sendMongoRequest({
-            url,
-            method,
-            collectionName: _collectionName,
+        return send({
             filter
         }, callback);
     };
@@ -109,10 +112,7 @@ var MongoRequest = function (url) {
         this.update = (callback) => {
             method = 'updateMany';
             options.multi = true;
-            return sendMongoRequest({
-                url,
-                method,
-                collectionName: _collectionName,
+            return send({
                 filter,
                 operations,
                 options
@@ -123,10 +123,7 @@ var MongoRequest = function (url) {
     this.insert = (doc, callback) => {
         document = doc;
         method = 'insert';
-        return sendMongoRequest({
-            url,
-            method,
-            collectionName: _collectionName,
+        return send({
             document,
             options
         }, callback);
