@@ -3,7 +3,7 @@ var MongoClient = require('mongodb').MongoClient;
 function sendMongoRequest(request, callback) {
     MongoClient.connect(request.url, function (err, db) {
         if (err) {
-            return callback(err);;
+            return callback(err);
         }
         var onResponseCallback = (err, data) => {
             callback(err, data);
